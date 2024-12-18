@@ -18,7 +18,9 @@ use anchor_spl::token_2022::{
     spl_token_2022::{self, instruction::AuthorityType},
 };
 use anchor_spl::token_interface;
-use mpl_token_metadata::{instruction::create_metadata_accounts_v3, state::Creator};
+use mpl_token_metadata::types::Creator;
+use mpl_token_metadata::instructions::CreateMetadataAccountV3Builder;
+use mpl_token_metadata::types::DataV2;
 use std::cell::RefMut;
 #[cfg(feature = "enable-log")]
 use std::convert::identity;
@@ -835,28 +837,30 @@ fn initialize_metadata_account<'info>(
     uri: String,
     signers_seeds: &[&[&[u8]]],
 ) -> Result<()> {
-    let create_metadata_ix = create_metadata_accounts_v3(
-        metadata_program.key(),
-        metadata_account.key(),
-        position_nft_mint.key(),
-        authority.key(),
-        payer.key(),
-        authority.key(),
+    let data = DataV2 {
         name,
         symbol,
         uri,
-        Some(vec![Creator {
+        seller_fee_basis_points: 0,
+        creators: Some(vec![Creator {
             address: authority.key(),
             verified: true,
             share: 100,
         }]),
-        0,
-        true,
-        false,
-        None,
-        None,
-        None,
-    );
+        collection: None,
+        uses: None,
+    };
+    let (metadata_key, _) = Pubkey::find_program_address(&[b"metadata", &metadata_account.key().as_ref(), &position_nft_mint.key().as_ref()], &metadata_program.key());
+    let create_metadata_ix: solana_program::instruction::Instruction = CreateMetadataAccountV3Builder::new()
+        .metadata(metadata_key)
+        .mint(position_nft_mint.key())
+        .mint_authority(authority.key())
+        .payer(payer.key())
+        .update_authority(authority.key(), true)
+        .data(data)
+        .system_program(metadata_program.key())
+        .is_mutable(false)
+        .instruction();
     solana_program::program::invoke_signed(
         &create_metadata_ix,
         &[
@@ -894,8 +898,7 @@ pub fn initialize_token_metadata_extension<'info>(
     let mint_data = position_nft_mint.try_borrow_data()?;
     let mint_state_unpacked =
         StateWithExtensions::<spl_token_2022::state::Mint>::unpack(&mint_data)?;
-    let new_account_len = mint_state_unpacked
-        .try_get_new_account_len::<spl_token_metadata_interface::state::TokenMetadata>(&metadata)?;
+    let new_account_len = mint_state_unpacked.try_get_new_account_len_for_variable_len_extension(&metadata)?;
     let new_rent_exempt_lamports = Rent::get()?.minimum_balance(new_account_len);
     let additional_lamports = new_rent_exempt_lamports.saturating_sub(position_nft_mint.lamports());
     // CPI call will borrow the account data

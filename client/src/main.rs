@@ -2118,6 +2118,7 @@ fn main() -> Result<()> {
                         ..RpcAccountInfoConfig::default()
                     },
                     with_context: Some(false),
+                    sort_results: None,
                 },
             )?;
 
@@ -2176,6 +2177,7 @@ fn main() -> Result<()> {
                         ..RpcAccountInfoConfig::default()
                     },
                     with_context: Some(false),
+                    sort_results: None,
                 },
             )?;
 
@@ -2213,6 +2215,7 @@ fn main() -> Result<()> {
                         ..RpcAccountInfoConfig::default()
                     },
                     with_context: Some(false),
+                    sort_results: None,
                 },
             )?;
 

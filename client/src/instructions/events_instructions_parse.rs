@@ -7,6 +7,7 @@ use colorful::Colorful;
 use raydium_amm_v3::instruction;
 use raydium_amm_v3::instructions::*;
 use raydium_amm_v3::states::*;
+use anchor_lang::__private::base64::prelude::*;
 use regex::Regex;
 use solana_transaction_status::{
     option_serializer::OptionSerializer, EncodedTransaction, UiTransactionStatusMeta,
@@ -123,7 +124,7 @@ pub fn handle_program_log(
             // not log event
             return Ok((None, false));
         }
-        let borsh_bytes = match anchor_lang::__private::base64::decode(log) {
+        let borsh_bytes = match BASE64_STANDARD.decode(log) {
             Ok(borsh_bytes) => borsh_bytes,
             _ => {
                 println!("Could not base64 decode log: {}", log);
@@ -138,7 +139,7 @@ pub fn handle_program_log(
             slice = &slice[8..];
             disc
         };
-        match disc {
+        match disc.as_slice() {
             ConfigChangeEvent::DISCRIMINATOR => {
                 println!("{:#?}", decode_event::<ConfigChangeEvent>(&mut slice)?);
             }
@@ -317,7 +318,7 @@ pub fn handle_program_instruction(
             data = hex::decode(instr_data).unwrap();
         }
         InstructionDecodeType::Base64 => {
-            let borsh_bytes = match anchor_lang::__private::base64::decode(instr_data) {
+            let borsh_bytes = match BASE64_STANDARD.decode(instr_data) {
                 Ok(borsh_bytes) => borsh_bytes,
                 _ => {
                     println!("Could not base64 decode instruction: {}", instr_data);
@@ -347,7 +348,7 @@ pub fn handle_program_instruction(
     };
     // println!("{:?}", disc);
 
-    match disc {
+    match disc.as_slice() {
         instruction::CreateAmmConfig::DISCRIMINATOR => {
             let ix = decode_instruction::<instruction::CreateAmmConfig>(&mut ix_data).unwrap();
             #[derive(Debug)]
